@@ -5,9 +5,12 @@ import type { Choice, Question } from "../data/journey";
 import type { FxApi } from "../hooks/useFx";
 import type { SoundApi } from "../hooks/useSound";
 import { itemVariants, listVariants, popVariants } from "../lib/motion";
+import { saveAbbosOpinion, saveWhyNoResponse } from "../lib/responses";
 import { ChoiceButton } from "./ChoiceButton";
 import { DodgingButton } from "./DodgingButton";
 import { ProgressBar } from "./ProgressBar";
+import { QuestionMoodLayer } from "./QuestionMood";
+import { WhyNoModal, type WhyNoModalCopy } from "./WhyNoModal";
 
 interface QuestionCardProps {
   question: Question;
@@ -17,11 +20,16 @@ interface QuestionCardProps {
   sound: SoundApi;
   fx: FxApi;
   onAnswer: (choice: Choice) => void;
+  /**
+   * When present, the "yes" answer to this question first opens a little
+   * dialog asking what she thinks about Abbos. Only ever passed for the last
+   * question — everything else keeps its original, immediate reaction.
+   */
+  opinionCopy?: WhyNoModalCopy;
 }
 
 /** How long the reaction lingers before the story moves on. */
 const REACTION_HOLD = 1500;
-const DODGE_HOLD = 1900;
 
 export function QuestionCard({
   question,
@@ -30,10 +38,19 @@ export function QuestionCard({
   sound,
   fx,
   onAnswer,
+  opinionCopy,
 }: QuestionCardProps) {
   const [picked, setPicked] = useState<Choice | null>(null);
   const [reaction, setReaction] = useState<string | null>(null);
   const [pop, setPop] = useState<string | null>(null);
+  /** how many times the "no" button has slipped away so far */
+  const [attempts, setAttempts] = useState(0);
+  /** true while the "Why no? 🥺" dialog is open */
+  const [whyNoOpen, setWhyNoOpen] = useState(false);
+  /** true while the "What do you think about Abbos? ❤️" dialog is open */
+  const [opinionOpen, setOpinionOpen] = useState(false);
+  /** the "yes" choice held back until she has written her opinion */
+  const pendingOpinion = useRef<Choice | null>(null);
   const cardRef = useRef<HTMLDivElement>(null);
   const timers = useRef<number[]>([]);
 
@@ -65,34 +82,93 @@ export function QuestionCard({
     (element: HTMLButtonElement | null, choice: Choice) => {
       if (picked) return;
       if (choice.dodge) return; // handled by DodgingButton
+      // On the last question the "yes" answer pauses for her opinion about
+      // Abbos; the reaction (and the rest of the story) waits right here.
+      if (opinionCopy && choice.variant === "primary") {
+        pendingOpinion.current = choice;
+        setOpinionOpen(true);
+        return;
+      }
       setReaction(choice.reaction);
       celebrate(choice, element, REACTION_HOLD);
     },
-    [celebrate, picked],
+    [celebrate, opinionCopy, picked],
   );
 
-  const handleDodgeCaught = useCallback(() => {
-    const choice = question.choices[1];
-    setReaction(choice.dodge?.taunt ?? "Nice try 😂❤️");
-    setPop("😂");
-    fx.burstFrom(cardRef.current, "spark", 12);
-    later(() => fx.burstFrom(cardRef.current, "spark", 18), 260);
-  }, [fx, later, question.choices]);
-
-  const handleDodgeContinue = useCallback(
-    (element: HTMLButtonElement | null) => {
-      const choice = question.choices[1];
-      celebrate(choice, element, DODGE_HOLD);
+  /**
+   * Every escape: counts the attempt, shows its taunt and sprinkles a few
+   * sparks. There is no "caught" state any more — the button never gives up.
+   */
+  const handleDodge = useCallback(
+    (attempt: number, taunt: string) => {
+      setAttempts(attempt);
+      setReaction(taunt);
+      fx.burstFrom(cardRef.current, "spark", 7);
     },
-    [celebrate, question.choices],
+    [fx],
   );
 
-  const locked = picked !== null;
+  const locked = picked !== null || opinionOpen;
   const dodgeChoice = question.choices.find((choice) => choice.dodge);
   const normalChoices = question.choices.filter((choice) => !choice.dodge);
 
+  /** She caught it — the button never says "no", it just opens the dialog. */
+  const handleCatch = useCallback(() => {
+    if (picked) return;
+    sound.engine.pop();
+    setWhyNoOpen(true);
+  }, [picked, sound]);
+
+  /** "Send ❤️": keep her words, then let the story continue normally. */
+  const handleWhyNoSend = useCallback(
+    (text: string) => {
+      saveWhyNoResponse(text);
+      setWhyNoOpen(false);
+      sound.engine.chime();
+      if (!dodgeChoice) return;
+      setReaction(dodgeChoice.reaction);
+      celebrate(dodgeChoice, cardRef.current, REACTION_HOLD);
+    },
+    [celebrate, dodgeChoice, sound],
+  );
+
+  /** "Maybe later": just close it — still question 7, NO stays put. */
+  const handleWhyNoLater = useCallback(() => {
+    sound.engine.pop();
+    setWhyNoOpen(false);
+  }, [sound]);
+
+  /** Releases the held-back "yes" choice and plays its usual reaction. */
+  const proceedWithOpinion = useCallback(() => {
+    const choice = pendingOpinion.current;
+    pendingOpinion.current = null;
+    if (!choice) return;
+    setReaction(choice.reaction);
+    celebrate(choice, cardRef.current, REACTION_HOLD);
+  }, [celebrate]);
+
+  /** "Send ❤️": keep what she thinks about Abbos, then continue as usual. */
+  const handleOpinionSend = useCallback(
+    (text: string) => {
+      saveAbbosOpinion(text);
+      setOpinionOpen(false);
+      sound.engine.chime();
+      proceedWithOpinion();
+    },
+    [proceedWithOpinion, sound],
+  );
+
+  /** "Maybe later": no opinion, but her "yes" still stands. */
+  const handleOpinionLater = useCallback(() => {
+    setOpinionOpen(false);
+    sound.engine.pop();
+    proceedWithOpinion();
+  }, [proceedWithOpinion, sound]);
+
   return (
     <motion.div ref={cardRef} className="card" variants={listVariants}>
+      {question.mood && <QuestionMoodLayer mood={question.mood} />}
+
       <ProgressBar current={index + 1} total={total} />
 
       <motion.div className="card__head" variants={itemVariants}>
@@ -110,7 +186,7 @@ export function QuestionCard({
         <AnimatePresence mode="wait">
           {reaction ? (
             <motion.p
-              key="reaction"
+              key={`reaction-${attempts}-${reaction}`}
               className="reaction"
               variants={popVariants}
               initial="hidden"
@@ -124,7 +200,14 @@ export function QuestionCard({
                 strokeWidth={0}
                 style={{ color: "var(--rose-500)", flex: "none" }}
               />
-              {reaction}
+              <span className="reaction__body">
+                {attempts > 0 && (
+                  <span className="reaction__attempts" aria-label={`Attempts ${attempts}`}>
+                    Attempts {attempts}
+                  </span>
+                )}
+                {reaction}
+              </span>
             </motion.p>
           ) : (
             <motion.span
@@ -157,11 +240,11 @@ export function QuestionCard({
             <DodgingButton
               label={dodgeChoice.label}
               emoji={dodgeChoice.emoji}
-              caughtLabel={dodgeChoice.dodge?.caughtLabel ?? "Okay, fine"}
-              maxDodges={dodgeChoice.dodge?.maxDodges ?? 3}
+              taunts={dodgeChoice.dodge?.taunts ?? ["Nice try 😏"]}
               sound={sound}
-              onCaught={handleDodgeCaught}
-              onContinue={handleDodgeContinue}
+              disabled={locked || whyNoOpen}
+              onDodge={handleDodge}
+              onCatch={handleCatch}
             />
           </motion.div>
         )}
@@ -186,6 +269,19 @@ export function QuestionCard({
           </motion.span>
         )}
       </AnimatePresence>
+
+      <WhyNoModal
+        open={whyNoOpen}
+        onSend={handleWhyNoSend}
+        onLater={handleWhyNoLater}
+      />
+
+      <WhyNoModal
+        open={opinionOpen && Boolean(opinionCopy)}
+        copy={opinionCopy}
+        onSend={handleOpinionSend}
+        onLater={handleOpinionLater}
+      />
     </motion.div>
   );
 }

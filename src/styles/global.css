@@ -824,11 +824,6 @@ p {
   cursor: pointer;
 }
 
-.dodge-btn--caught {
-  cursor: pointer;
-  opacity: 0.92;
-}
-
 .dodge-note {
   display: inline-flex;
   align-items: center;
@@ -884,6 +879,19 @@ p {
   color: var(--rose-100);
   box-shadow: 0 0 30px -8px rgba(255, 93, 143, 0.5);
   text-wrap: balance;
+  text-align: center;
+}
+
+/*
+ * The taunt and its attempts counter share one text flow, and the block is
+ * hard-capped at two lines: the pill can never grow, so the answer buttons
+ * underneath never shift by a single pixel.
+ */
+.reaction__body {
+  display: block;
+  min-width: 0;
+  max-height: 47px;
+  overflow: hidden;
 }
 
 /* =========================================================
@@ -1130,11 +1138,15 @@ p {
   margin-top: clamp(18px, 4.2vw, 28px);
 }
 
+/*
+ * Fixed so the answer buttons never shift under her finger: a long dodge taunt
+ * wraps to two lines here without pushing anything around.
+ */
 .card__reaction-slot {
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: 46px;
+  min-height: 68px;
   margin-top: clamp(16px, 3.8vw, 22px);
 }
 
@@ -1175,18 +1187,32 @@ p {
 .dodge-slot {
   position: relative;
   width: 100%;
-  min-height: 118px;
+  min-height: 142px;
 }
 
 .dodge-btn {
   position: absolute;
   top: 0;
   left: 0;
+  touch-action: manipulation;
+}
+
+/*
+ * Once it breaks out of the card the dodge button is portalled onto <body> and
+ * pinned to the viewport, so no card clipping or page transform can hold it.
+ * It stays under the sound toggle (z-index 20) so that control keeps working.
+ */
+.dodge-btn--fixed {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 15;
+  will-change: transform, opacity;
 }
 
 @media (max-height: 760px) {
   .dodge-slot {
-    min-height: 96px;
+    min-height: 126px;
   }
 }
 
@@ -1475,6 +1501,675 @@ p {
 }
 
 /* =========================================================
+   START screen — the romantic postcard
+   ========================================================= */
+.start {
+  position: relative;
+  width: 100%;
+  max-width: 640px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(14px, 3.6vw, 24px);
+  text-align: center;
+}
+
+.start__halo {
+  position: absolute;
+  left: 50%;
+  top: 44%;
+  width: min(150vw, 780px);
+  aspect-ratio: 1;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    rgba(255, 93, 143, 0.34) 0%,
+    rgba(255, 93, 143, 0.1) 42%,
+    transparent 68%
+  );
+  pointer-events: none;
+  z-index: 0;
+}
+
+.start__holder {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  perspective: 1400px;
+  perspective-origin: 50% 42%;
+}
+
+.start__sparkles {
+  position: absolute;
+  inset: -14% -8%;
+  pointer-events: none;
+  z-index: 5;
+}
+
+/* ---------- the postcard itself ---------- */
+.postcard {
+  position: relative;
+  width: min(84vw, 402px);
+  height: clamp(276px, 45vh, 358px);
+  border-radius: 26px;
+  cursor: pointer;
+  transform-style: preserve-3d;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.postcard__paper,
+.postcard__face {
+  position: absolute;
+  inset: 0;
+  border-radius: 26px;
+}
+
+/* the letter hiding underneath */
+.postcard__paper {
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(160deg, #fff7f9 0%, #ffeaf1 46%, #ffdde9 100%);
+  border: 1px solid rgba(255, 255, 255, 0.72);
+  box-shadow: 0 34px 66px -28px rgba(0, 0, 0, 0.85),
+    0 0 60px -18px rgba(255, 93, 143, 0.5);
+}
+
+.postcard__inside {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(8px, 2.6vw, 14px);
+  width: 100%;
+  height: 100%;
+  padding: clamp(20px, 6vw, 34px) clamp(16px, 6vw, 32px);
+  text-align: center;
+}
+
+.postcard__seal {
+  display: grid;
+  place-items: center;
+  width: clamp(58px, 17vw, 76px);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  font-size: clamp(1.5rem, 5.4vw, 2rem);
+  line-height: 1;
+  background: radial-gradient(circle at 34% 30%, #ff8fb0, var(--red-600) 58%, var(--red-700));
+  box-shadow: 0 14px 28px -14px rgba(169, 24, 74, 0.95),
+    inset 0 2px 6px rgba(255, 255, 255, 0.55), 0 0 0 7px rgba(255, 255, 255, 0.6);
+}
+
+.postcard__inside-title {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: clamp(1.16rem, 4.6vw, 1.5rem);
+  line-height: 1.2;
+  color: var(--red-700);
+}
+
+.postcard__inside-line {
+  font-family: var(--font-quote);
+  font-style: italic;
+  font-size: clamp(0.96rem, 3.6vw, 1.14rem);
+  line-height: 1.45;
+  color: #8a2b47;
+  max-width: 24ch;
+}
+
+/* ---------- the flap that swings open ---------- */
+.postcard__flap {
+  position: absolute;
+  inset: 0;
+  transform-style: preserve-3d;
+  transform-origin: 50% 0%;
+  will-change: transform;
+}
+
+.postcard__face {
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  overflow: hidden;
+}
+
+.postcard__face--front {
+  background: linear-gradient(158deg, #fff9fb 0%, #ffeff4 42%, #ffe0ea 100%);
+  border: 1px solid rgba(255, 255, 255, 0.78);
+  box-shadow: 0 34px 66px -28px rgba(0, 0, 0, 0.85),
+    0 0 66px -16px rgba(255, 93, 143, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.95);
+}
+
+/* perforated inner border, like real stationery */
+.postcard__face--front::after {
+  content: "";
+  position: absolute;
+  inset: 9px;
+  border-radius: 18px;
+  border: 1px dashed rgba(164, 19, 60, 0.3);
+  pointer-events: none;
+}
+
+.postcard__face--back {
+  transform: rotateX(180deg);
+  display: grid;
+  place-items: center;
+  background: linear-gradient(158deg, #ffe9f0 0%, #ffd6e2 55%, #ffc7d8 100%);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+
+.postcard__back-mark {
+  font-size: clamp(1.6rem, 6vw, 2.2rem);
+  line-height: 1;
+  opacity: 0.5;
+}
+
+.postcard__front {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(6px, 2vw, 12px);
+  width: 100%;
+  height: 100%;
+  padding: clamp(22px, 7vw, 34px) clamp(16px, 6vw, 34px);
+}
+
+.postcard__eyebrow {
+  font-size: clamp(0.54rem, 2.2vw, 0.62rem);
+  font-weight: 500;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: rgba(164, 19, 60, 0.62);
+}
+
+.postcard__title {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: clamp(1.95rem, 8.2vw, 2.85rem);
+  line-height: 1.08;
+  letter-spacing: -0.01em;
+  background: linear-gradient(160deg, #c9184a 0%, #e8436f 52%, #a4133c 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.postcard__subtitle {
+  font-family: var(--font-quote);
+  font-style: italic;
+  font-weight: 400;
+  font-size: clamp(0.98rem, 3.8vw, 1.18rem);
+  line-height: 1.4;
+  color: #7d2340;
+  max-width: 22ch;
+}
+
+.postcard__cta {
+  margin-top: clamp(4px, 1.6vw, 10px);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 11px 24px;
+  border-radius: var(--r-pill);
+  background: linear-gradient(135deg, var(--rose-500) 0%, var(--red-600) 60%, var(--red-700) 100%);
+  color: #fff;
+  font-size: clamp(0.9rem, 3.2vw, 1rem);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  box-shadow: 0 14px 30px -14px rgba(232, 67, 111, 0.95),
+    0 0 0 1px rgba(255, 255, 255, 0.4) inset;
+  animation: cta-breathe 2.4s var(--ease-soft) infinite;
+}
+
+@keyframes cta-breathe {
+  0%,
+  100% {
+    transform: scale(1);
+    box-shadow: 0 14px 30px -14px rgba(232, 67, 111, 0.95),
+      0 0 0 1px rgba(255, 255, 255, 0.4) inset;
+  }
+  50% {
+    transform: scale(1.045);
+    box-shadow: 0 18px 38px -14px rgba(232, 67, 111, 1), 0 0 26px rgba(255, 93, 143, 0.6),
+      0 0 0 1px rgba(255, 255, 255, 0.5) inset;
+  }
+}
+
+/* stamp + postmark, the little premium details */
+.postcard__stamp {
+  position: absolute;
+  top: 14px;
+  right: 16px;
+  z-index: 3;
+  display: grid;
+  place-items: center;
+  width: clamp(38px, 11vw, 48px);
+  height: clamp(46px, 13vw, 58px);
+  font-size: clamp(1.1rem, 4vw, 1.4rem);
+  line-height: 1;
+  background: linear-gradient(150deg, #ffffff, #fff2f6);
+  border: 2px dashed rgba(164, 19, 60, 0.35);
+  border-radius: 5px;
+  box-shadow: 0 6px 14px -8px rgba(0, 0, 0, 0.5);
+  transform: rotate(6deg);
+}
+
+.postcard__postmark {
+  position: absolute;
+  left: clamp(14px, 5vw, 24px);
+  bottom: clamp(14px, 5vw, 24px);
+  z-index: 3;
+  display: grid;
+  place-items: center;
+  width: clamp(52px, 16vw, 66px);
+  height: clamp(52px, 16vw, 66px);
+  border-radius: 50%;
+  border: 2px solid rgba(164, 19, 60, 0.24);
+  font-size: clamp(0.4rem, 1.7vw, 0.48rem);
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  line-height: 1.4;
+  text-transform: uppercase;
+  text-align: center;
+  color: rgba(164, 19, 60, 0.42);
+  transform: rotate(-15deg);
+  pointer-events: none;
+}
+
+/* light sweeping across the paper as it opens */
+.postcard__sheen {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  overflow: hidden;
+  border-radius: inherit;
+  pointer-events: none;
+}
+
+.postcard__sheen::after {
+  content: "";
+  position: absolute;
+  top: -60%;
+  left: -70%;
+  width: 48%;
+  height: 220%;
+  background: linear-gradient(
+    100deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.9) 50%,
+    transparent 100%
+  );
+  transform: translateX(-30%) rotate(10deg);
+  opacity: 0;
+}
+
+.postcard__face--front.is-open .postcard__sheen::after {
+  animation: postcard-sheen 1.25s 0.25s var(--ease-out) both;
+}
+
+@keyframes postcard-sheen {
+  0% {
+    opacity: 0;
+    transform: translateX(-30%) rotate(10deg);
+  }
+  25% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(340%) rotate(10deg);
+  }
+}
+
+/* the glow pouring out of the opened letter — a ring of light so the words
+   inside stay perfectly readable */
+.postcard__bloom {
+  position: absolute;
+  inset: -20%;
+  z-index: 6;
+  border-radius: 50%;
+  opacity: 0;
+  transform: scale(0.62);
+  pointer-events: none;
+  mix-blend-mode: screen;
+  background: radial-gradient(
+    circle,
+    rgba(255, 255, 255, 0.3) 0%,
+    transparent 24%,
+    rgba(255, 255, 255, 0.4) 40%,
+    rgba(255, 176, 205, 0.4) 54%,
+    rgba(255, 93, 143, 0.2) 68%,
+    transparent 82%
+  );
+  transition: opacity 1.1s var(--ease-out), transform 1.5s var(--ease-out);
+}
+
+.postcard--opening .postcard__bloom {
+  opacity: 0.85;
+  transform: scale(1.12);
+}
+
+/* ---------- the teddy bear ---------- */
+.start__teddy {
+  position: absolute;
+  right: clamp(-12px, -2vw, -4px);
+  bottom: -18px;
+  z-index: 7;
+  display: grid;
+  place-items: center;
+  width: clamp(64px, 17vw, 84px);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: radial-gradient(circle at 34% 28%, #ffffff 0%, #fff1f6 52%, #ffdbe8 100%);
+  border: 1px solid rgba(255, 255, 255, 0.9);
+  box-shadow: 0 18px 34px -16px rgba(0, 0, 0, 0.85),
+    0 0 40px -10px rgba(255, 93, 143, 0.75), inset 0 -4px 10px rgba(255, 143, 171, 0.35);
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+.start__teddy::before {
+  content: "";
+  position: absolute;
+  inset: -9px;
+  border-radius: 50%;
+  border: 1px dashed rgba(255, 143, 171, 0.55);
+  animation: spin 24s linear infinite;
+}
+
+.start__teddy-face {
+  font-size: clamp(2.1rem, 7.6vw, 2.9rem);
+  line-height: 1;
+  filter: drop-shadow(0 6px 10px rgba(120, 40, 60, 0.35));
+}
+
+/* ---------- hearts flying out of the letter ---------- */
+.start__flight {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  z-index: 8;
+  line-height: 1;
+  pointer-events: none;
+  filter: drop-shadow(0 0 12px rgba(255, 93, 143, 0.7));
+  will-change: transform, opacity;
+}
+
+.start__hint {
+  position: relative;
+  z-index: 2;
+  font-size: clamp(0.62rem, 2.4vw, 0.7rem);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+
+/* ---------- attempts counter inside the reaction pill ---------- */
+.reaction__attempts {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  margin: 0 8px 0 0;
+  padding: 4px 10px;
+  border-radius: var(--r-pill);
+  background: rgba(255, 93, 143, 0.22);
+  border: 1px solid rgba(255, 143, 171, 0.45);
+  color: var(--rose-100);
+  font-family: var(--font-ui);
+  font-size: 0.6rem;
+  font-style: normal;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  vertical-align: 1px;
+  box-shadow: 0 0 18px -6px rgba(255, 93, 143, 0.8);
+  animation: attempts-pop 0.4s var(--ease-out);
+}
+
+@keyframes attempts-pop {
+  0% {
+    transform: scale(0.7);
+    opacity: 0;
+  }
+  60% {
+    transform: scale(1.14);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+/* =========================================================
+   Per-question atmosphere (bench / walk home)
+   ========================================================= */
+/* the mood layer sits behind everything else on the card */
+.card__head,
+.card__reaction-slot,
+.choices,
+.progress {
+  position: relative;
+  z-index: 1;
+}
+
+.mood {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+  opacity: 0;
+  animation: mood-in 1.8s var(--ease-out) 0.1s forwards;
+}
+
+@keyframes mood-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.mood__glow {
+  position: absolute;
+  inset: -30% -12% auto;
+  height: 80%;
+  border-radius: 50%;
+  filter: blur(40px);
+  opacity: 0.62;
+}
+
+.mood--cozy .mood__glow {
+  background: radial-gradient(
+    60% 60% at 50% 42%,
+    rgba(255, 176, 108, 0.36),
+    rgba(255, 93, 143, 0.22) 56%,
+    transparent 78%
+  );
+}
+
+.mood--evening .mood__glow {
+  background: radial-gradient(
+    60% 60% at 50% 30%,
+    rgba(112, 130, 255, 0.28),
+    rgba(255, 93, 143, 0.18) 58%,
+    transparent 80%
+  );
+}
+
+.mood__heart {
+  position: absolute;
+  color: var(--rose-400);
+  filter: drop-shadow(0 0 10px rgba(255, 93, 143, 0.55));
+}
+
+.mood__mote {
+  position: absolute;
+  border-radius: 50%;
+}
+
+.mood--cozy .mood__mote {
+  background: radial-gradient(circle, #ffd9a8, rgba(255, 176, 108, 0.15) 70%);
+  box-shadow: 0 0 12px rgba(255, 190, 120, 0.8);
+}
+
+.mood--evening .mood__mote {
+  background: radial-gradient(circle, #cdd4ff, rgba(150, 165, 255, 0.12) 70%);
+  box-shadow: 0 0 14px rgba(160, 175, 255, 0.85);
+}
+
+.mood__star {
+  position: absolute;
+  color: #e7ebff;
+  filter: drop-shadow(0 0 8px rgba(190, 205, 255, 0.9));
+}
+
+.mood__sparkle {
+  position: absolute;
+  right: 10%;
+  top: 14%;
+  color: var(--gold);
+  filter: drop-shadow(0 0 10px rgba(244, 207, 149, 0.9));
+}
+
+/* =========================================================
+   "Why no? 🥺" modal (last question)
+   ========================================================= */
+.why-no {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: grid;
+  place-items: center;
+  padding: clamp(16px, 5vw, 28px);
+  background: radial-gradient(
+    120% 90% at 50% 30%,
+    rgba(150, 20, 70, 0.42),
+    rgba(6, 2, 8, 0.84) 72%
+  );
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+}
+
+.why-no__card {
+  position: relative;
+  width: min(100%, 400px);
+  padding: clamp(24px, 6vw, 32px) clamp(20px, 5vw, 28px)
+    clamp(22px, 5vw, 28px);
+  border-radius: 28px;
+  border: 1px solid var(--stroke-strong);
+  background: linear-gradient(
+    160deg,
+    rgba(255, 255, 255, 0.13) 0%,
+    rgba(255, 255, 255, 0.06) 38%,
+    rgba(255, 255, 255, 0.03) 100%
+  );
+  -webkit-backdrop-filter: blur(26px) saturate(140%);
+  backdrop-filter: blur(26px) saturate(140%);
+  box-shadow: 0 44px 90px -34px rgba(0, 0, 0, 0.9), var(--glow-rose),
+    0 0 0 1px rgba(255, 255, 255, 0.05) inset;
+  text-align: center;
+  overflow: hidden;
+}
+
+/* soft rose bloom behind the head of the dialog */
+.why-no__halo {
+  position: absolute;
+  top: -46%;
+  left: 50%;
+  width: 130%;
+  height: 92%;
+  transform: translateX(-50%);
+  background: radial-gradient(
+    ellipse at center,
+    rgba(255, 93, 143, 0.34),
+    transparent 64%
+  );
+  pointer-events: none;
+}
+
+.why-no__title {
+  position: relative;
+  font-family: var(--font-display);
+  font-size: clamp(1.5rem, 6vw, 1.9rem);
+  font-weight: 600;
+  line-height: 1.15;
+}
+
+.why-no__subtitle {
+  position: relative;
+  margin-top: 8px;
+  font-family: var(--font-quote);
+  font-size: clamp(1rem, 3.6vw, 1.1rem);
+  color: var(--text-dim);
+}
+
+.why-no__field {
+  position: relative;
+  display: block;
+  width: 100%;
+  min-height: 104px;
+  margin-top: clamp(16px, 4vw, 20px);
+  padding: 13px 15px;
+  resize: none;
+  border-radius: var(--r-md);
+  border: 1px solid var(--stroke);
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text);
+  font-family: var(--font-ui);
+  font-size: 0.98rem;
+  line-height: 1.55;
+  outline: none;
+  transition: border-color 0.3s var(--ease-out),
+    box-shadow 0.3s var(--ease-out), background 0.3s var(--ease-out);
+}
+
+.why-no__field::placeholder {
+  color: var(--text-faint);
+}
+
+.why-no__field:focus {
+  border-color: rgba(255, 143, 171, 0.62);
+  background: rgba(255, 255, 255, 0.09);
+  box-shadow: 0 0 0 4px rgba(255, 93, 143, 0.16),
+    0 14px 34px -22px rgba(0, 0, 0, 0.9);
+}
+
+.why-no__actions {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: clamp(16px, 4vw, 20px);
+}
+
+.why-no__actions .btn {
+  width: 100%;
+}
+
+@media (min-width: 420px) {
+  .why-no__actions {
+    flex-direction: row;
+  }
+
+  .why-no__actions .btn {
+    flex: 1 1 0;
+  }
+}
+
+/* =========================================================
    Reduced motion
    ========================================================= */
 @media (prefers-reduced-motion: reduce) {
@@ -1483,12 +2178,20 @@ p {
   .heart-stage__halo,
   .hearts__item,
   .progress__fill::after,
-  .hint {
+  .hint,
+  .postcard__cta,
+  .postcard__sheen::after,
+  .reaction__attempts,
+  .start__teddy::before {
     animation: none !important;
   }
 
   .heart-stage__halo {
     opacity: 0.85;
+  }
+
+  .postcard__bloom {
+    transition: none;
   }
 }
 

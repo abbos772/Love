@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence } from "framer-motion";
 import { AnimatedBackground } from "./components/AnimatedBackground";
 import { BridgeScreen } from "./components/BridgeScreen";
@@ -12,11 +12,22 @@ import { QuestionCard } from "./components/QuestionCard";
 import { RomanticMessageScreen } from "./components/RomanticMessageScreen";
 import { Screen } from "./components/Screen";
 import { SoundToggle } from "./components/SoundToggle";
-import { QUESTIONS, TOTAL_QUESTIONS, pickMessages } from "./data/journey";
+import { StartScreen } from "./components/StartScreen";
+import {
+  COUPLE,
+  OPINION,
+  QUESTIONS,
+  TOTAL_QUESTIONS,
+  pickMessages,
+  type Choice,
+} from "./data/journey";
 import { useFx } from "./hooks/useFx";
 import { useSound } from "./hooks/useSound";
+import { clearResponses, getResponsesSnapshot, saveAnswer } from "./lib/responses";
+import { sendResponsesToTelegram } from "./lib/telegram";
 
 type Step =
+  | { kind: "start" }
   | { kind: "intro" }
   | { kind: "question"; index: number }
   | { kind: "message"; text: string }
@@ -32,10 +43,12 @@ const MESSAGES_SHOWN = 2;
  * replay never plays out exactly the same, without ever feeling repetitive.
  */
 function buildFlow(messages: string[]): Step[] {
-  const flow: Step[] = [{ kind: "intro" }];
-  QUESTIONS.forEach((_, index) => {
+  const flow: Step[] = [{ kind: "start" }, { kind: "intro" }];
+  QUESTIONS.forEach((question, index) => {
     flow.push({ kind: "question", index });
-    const note = messages[index];
+    // The bench and walk-home questions carry their own fixed note; the others
+    // borrow one of the shuffled ones woven in earlier.
+    const note = question.message ?? messages[index];
     if (note && index < QUESTIONS.length - 1) {
       flow.push({ kind: "message", text: note });
     }
@@ -57,6 +70,8 @@ export function App() {
   const flow = useMemo(() => buildFlow(messages), [messages]);
   const [stepIndex, setStepIndex] = useState(0);
   const [celebrating, setCelebrating] = useState(false);
+  /** guards the one-and-only Telegram delivery per run of the story */
+  const telegramSent = useRef(false);
 
   const step = flow[stepIndex];
   const finaleIndex = flow.length - 1;
@@ -64,6 +79,39 @@ export function App() {
   const advance = useCallback(() => {
     setStepIndex((current) => Math.min(current + 1, flow.length - 1));
   }, [flow.length]);
+
+  /**
+   * Every question answer is kept as it is given. The moment the last
+   * question settles — after her "Why no?" reason or her opinion about Abbos
+   * has been saved — the whole set leaves for Telegram in a single message.
+   */
+  const handleQuestionAnswer = useCallback(
+    (index: number, choice: Choice) => {
+      const question = QUESTIONS[index];
+      saveAnswer({
+        id: question.id,
+        prompt: question.prompt,
+        answer: `${choice.label} ${choice.emoji}`,
+      });
+
+      if (index === TOTAL_QUESTIONS - 1 && !telegramSent.current) {
+        telegramSent.current = true;
+        const snapshot = getResponsesSnapshot();
+        const lastAnswer = snapshot.answers[snapshot.answers.length - 1];
+        void sendResponsesToTelegram({
+          nasiba: COUPLE.to,
+          abbos: COUPLE.from,
+          answers: snapshot.answers,
+          q7Answer: lastAnswer ? lastAnswer.answer : choice.label,
+          whyNoReason: snapshot.whyNo,
+          opinion: snapshot.opinion,
+        });
+      }
+
+      advance();
+    },
+    [advance],
+  );
 
   // A soft whoosh under the two heaviest scene changes.
   useEffect(() => {
@@ -89,6 +137,8 @@ export function App() {
 
   const handleReplay = useCallback(() => {
     fx.clearBursts();
+    clearResponses();
+    telegramSent.current = false;
     setMessages(pickMessages(MESSAGES_SHOWN));
     setStepIndex(0);
     setCelebrating(false);
@@ -96,6 +146,13 @@ export function App() {
 
   const renderStep = () => {
     switch (step.kind) {
+      case "start":
+        return (
+          <Screen key="start">
+            <StartScreen fx={fx} sound={sound} onOpen={advance} />
+          </Screen>
+        );
+
       case "intro":
         return (
           <Screen key="intro">
@@ -112,7 +169,8 @@ export function App() {
               total={TOTAL_QUESTIONS}
               sound={sound}
               fx={fx}
-              onAnswer={advance}
+              opinionCopy={step.index === TOTAL_QUESTIONS - 1 ? OPINION : undefined}
+              onAnswer={(choice) => handleQuestionAnswer(step.index, choice)}
             />
           </Screen>
         );
