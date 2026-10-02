@@ -41,6 +41,29 @@ export interface TelegramEnv {
 
 const TELEGRAM_SEND_MESSAGE_URL = "https://api.telegram.org/bot{token}/sendMessage";
 
+/** Refuse oversized request bodies early — the real payload is < 10 KB. */
+const MAX_BODY_BYTES = 64 * 1024;
+
+/** How long we are willing to wait for Telegram before failing the request. */
+const TELEGRAM_TIMEOUT_MS = 15_000;
+
+/** Reads a configured value defensively (Vercel env vars may carry stray spaces). */
+function envValue(value: string | undefined): string | null {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
+}
+
+/** Raised while reading the body, so the caller can answer with the right status. */
+class BodyError extends Error {
+  constructor(
+    message: string,
+    readonly status: number,
+  ) {
+    super(message);
+  }
+}
+
 /** Number badges for the first ten questions. */
 const NUMBER_BADGES = ["1️⃣", "2️⃣", "3️⃣", "4️⃣", "5️⃣", "6️⃣", "7️⃣", "8️⃣", "9️⃣", "🔟"];
 
@@ -155,11 +178,17 @@ async function readJsonBody(req: IncomingMessage): Promise<unknown> {
   }
 
   const chunks: Buffer[] = [];
+  let total = 0;
   for await (const chunk of req) {
-    chunks.push(typeof chunk === "string" ? Buffer.from(chunk) : chunk);
+    const buffer = typeof chunk === "string" ? Buffer.from(chunk) : chunk;
+    total += buffer.length;
+    if (total > MAX_BODY_BYTES) {
+      throw new BodyError("request body too large", 413);
+    }
+    chunks.push(buffer);
   }
   const text = Buffer.concat(chunks).toString("utf8").trim();
-  if (!text) throw new Error("empty request body");
+  if (!text) throw new BodyError("empty request body", 400);
   return JSON.parse(text);
 }
 
@@ -168,8 +197,8 @@ export async function sendToTelegram(
   payload: ResponsesPayload,
   env: TelegramEnv,
 ): Promise<void> {
-  const token = env.TELEGRAM_BOT_TOKEN;
-  const chatId = env.TELEGRAM_CHAT_ID;
+  const token = envValue(env.TELEGRAM_BOT_TOKEN);
+  const chatId = envValue(env.TELEGRAM_CHAT_ID);
   if (!token || !chatId) {
     throw new Error("TELEGRAM_BOT_TOKEN / TELEGRAM_CHAT_ID are not configured");
   }
@@ -180,6 +209,7 @@ export async function sendToTelegram(
     response = await fetch(url, {
       method: "POST",
       headers: { "content-type": "application/json" },
+      signal: AbortSignal.timeout(TELEGRAM_TIMEOUT_MS),
       body: JSON.stringify({
         chat_id: chatId,
         text: formatTelegramMessage(payload),
@@ -227,8 +257,10 @@ export async function handleTelegramRequest(
   let body: unknown;
   try {
     body = await readJsonBody(req);
-  } catch {
-    sendJson(res, 400, { ok: false, error: "Invalid JSON body" });
+  } catch (error) {
+    const status = error instanceof BodyError ? error.status : 400;
+    const message = status === 413 ? "Request body too large" : "Invalid JSON body";
+    sendJson(res, status, { ok: false, error: message });
     return;
   }
 
@@ -238,7 +270,7 @@ export async function handleTelegramRequest(
     return;
   }
 
-  if (!env.TELEGRAM_BOT_TOKEN || !env.TELEGRAM_CHAT_ID) {
+  if (!envValue(env.TELEGRAM_BOT_TOKEN) || !envValue(env.TELEGRAM_CHAT_ID)) {
     sendJson(res, 500, { ok: false, error: "Telegram is not configured on the server" });
     return;
   }
@@ -248,7 +280,7 @@ export async function handleTelegramRequest(
     sendJson(res, 200, { ok: true });
   } catch (error) {
     const detail = error instanceof Error ? error.message : "unknown error";
-    console.error("[telegram]", sanitize(detail, env.TELEGRAM_BOT_TOKEN));
+    console.error("[telegram]", sanitize(detail, envValue(env.TELEGRAM_BOT_TOKEN) ?? undefined));
     sendJson(res, 502, { ok: false, error: "Could not deliver the message" });
   }
 }
