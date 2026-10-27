@@ -147,6 +147,11 @@ p {
   justify-content: center;
 }
 
+/* the two-photo memory collage needs the extra room */
+.screen--wide {
+  max-width: 900px;
+}
+
 /* =========================================================
    Animated background layers
    ========================================================= */
@@ -1279,201 +1284,228 @@ p {
 }
 
 /* =========================================================
-   Gift memory (birthday photo)
+   Unified memories (holding hands + birthday gift, one screen)
    ========================================================= */
-.memory {
+.memories {
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: clamp(14px, 3.6vw, 22px);
+  gap: clamp(12px, 3vw, 20px);
   width: 100%;
-  max-width: 560px;
   text-align: center;
-  padding: clamp(6px, 2.6vw, 18px) 0;
+  padding: clamp(6px, 2.6vw, 16px) 0;
 }
 
-.memory__title {
-  max-width: 22ch;
+/* deep burgundy bloom behind the collage, faded in on open */
+.memories::before {
+  content: "";
+  position: absolute;
+  inset: -12% -20%;
+  z-index: -1;
+  pointer-events: none;
+  background: radial-gradient(
+    58% 46% at 50% 42%,
+    rgba(118, 16, 54, 0.55) 0%,
+    rgba(50, 10, 30, 0.34) 46%,
+    transparent 74%
+  );
+  animation: memories-bg-fade 1.5s var(--ease-out) both;
+}
+
+@keyframes memories-bg-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.memories__label {
+  font-size: clamp(0.62rem, 2.4vw, 0.72rem);
+  font-weight: 600;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--gold);
+  text-shadow: 0 0 22px rgba(244, 207, 149, 0.5);
+}
+
+.memories__title {
+  max-width: 26ch;
   line-height: 1.32;
+  color: var(--rose-100);
 }
 
-.memory__lead {
-  font-family: var(--font-quote);
-  font-style: italic;
-  font-weight: 300;
-  font-size: clamp(1.18rem, 4.4vw, 1.6rem);
-  line-height: 1.45;
-  color: var(--text-dim);
-  text-wrap: pretty;
-}
-
-.memory__frame-wrap {
+.memories__collage {
   position: relative;
   display: flex;
   justify-content: center;
   width: 100%;
-  padding: clamp(16px, 5vw, 26px) clamp(14px, 5vw, 26px);
+  padding: clamp(18px, 5vw, 30px) clamp(14px, 4vw, 26px);
 }
 
-.memory__hearts {
+.memories__floaters {
   position: absolute;
   inset: 0;
   pointer-events: none;
   z-index: 2;
 }
 
-.memory__heart {
+.memories__floater {
   position: absolute;
   display: inline-flex;
   filter: drop-shadow(0 0 9px currentColor);
 }
 
-/* the physical-looking photo card */
-.memory__card {
+.memories__sparkle {
+  position: absolute;
+  display: inline-flex;
+  color: var(--gold);
+  filter: drop-shadow(0 0 8px rgba(244, 207, 149, 0.9));
+}
+
+/* the two cards: side by side on desktop, stacked on small screens */
+.memories__pair {
   position: relative;
   z-index: 1;
-  display: block;
-  width: min(100%, 322px);
-  padding: clamp(10px, 2.8vw, 15px);
-  border-radius: 24px;
-  border: 1px solid rgba(255, 255, 255, 0.18);
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: flex-start;
+  gap: clamp(18px, 3.4vw, 30px);
+  width: 100%;
+  color:black;
+
+}
+
+/* one polaroid-style paper card */
+.memories__paper {
+  position: relative;
+  width: min(100%, 320px);
+  margin: 0;
+  padding: clamp(11px, 2.6vw, 14px) clamp(11px, 2.6vw, 14px)
+    clamp(15px, 3vw, 19px);
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.55);
   background: linear-gradient(
     158deg,
-    rgba(255, 255, 255, 0.17) 0%,
-    rgba(255, 255, 255, 0.05) 38%,
-    rgba(255, 255, 255, 0.02) 100%
+    #fffaf7 0%,
+    #fdeee9 54%,
+    #f7ded8 100%
   );
-  -webkit-backdrop-filter: blur(18px) saturate(130%);
-  backdrop-filter: blur(18px) saturate(130%);
   box-shadow:
-    0 34px 74px -26px rgba(0, 0, 0, 0.92),
-    0 0 64px -14px rgba(255, 93, 143, 0.55),
-    0 1px 0 rgba(255, 255, 255, 0.4) inset;
-  cursor: zoom-in;
+    0 40px 82px -28px rgba(0, 0, 0, 0.9),
+    0 0 74px -16px rgba(255, 93, 143, 0.5),
+    0 1px 0 rgba(255, 255, 255, 0.9) inset,
+    0 -18px 40px -30px rgba(120, 30, 60, 0.5) inset;
   transform-origin: center;
-  -webkit-tap-highlight-color: transparent;
-  touch-action: manipulation;
-}
-
-.memory__photo-frame {
-  position: relative;
-  display: block;
-  border-radius: 16px;
-  overflow: hidden;
-  background: var(--ink-800);
-  box-shadow: 0 10px 30px -14px rgba(0, 0, 0, 0.9);
-}
-
-/* the uploaded photo is a 3:4 portrait, so this never crops it */
-.memory__photo {
-  display: block;
-  width: 100%;
-  height: auto;
-  aspect-ratio: 3 / 4;
-  object-fit: cover;
   -webkit-user-select: none;
   user-select: none;
 }
 
-.memory__photo-sheen {
+/* faint paper texture */
+.memories__paper::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background:
+    radial-gradient(120% 70% at 22% 0%, rgba(255, 255, 255, 0.6), transparent 58%),
+    repeating-linear-gradient(
+      118deg,
+      rgba(140, 80, 70, 0.035) 0 2px,
+      transparent 2px 6px
+    );
+}
+
+.memories__frame {
+  position: relative;
+  display: block;
+  border-radius: 5px;
+  overflow: hidden;
+  background: var(--ink-800);
+  box-shadow: 0 8px 22px -12px rgba(60, 10, 30, 0.6);
+}
+
+/* both real photographs — natural aspect ratio, never cropped or stretched */
+.memories__photo {
+  display: block;
+  width: 100%;
+  height: auto;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.memories__sheen {
   position: absolute;
   inset: 0;
   pointer-events: none;
   background: linear-gradient(
     116deg,
-    rgba(255, 255, 255, 0.26) 0%,
-    transparent 32%,
-    transparent 68%,
-    rgba(255, 255, 255, 0.1) 100%
+    rgba(255, 255, 255, 0.22) 0%,
+    transparent 34%,
+    transparent 70%,
+    rgba(255, 255, 255, 0.09) 100%
   );
   mix-blend-mode: screen;
 }
 
-.memory__caption {
-  display: block;
-  margin-top: 13px;
-  font-family: var(--font-quote);
-  font-style: italic;
-  font-size: clamp(1rem, 3.4vw, 1.18rem);
-  color: var(--rose-200);
-}
-
-.memory__zoom-hint {
-  display: block;
-  margin-top: 7px;
-  font-size: 0.6rem;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  color: var(--text-faint);
-}
-
-.memory__lines {
+.memories__cap {
   display: flex;
   flex-direction: column;
-  gap: clamp(6px, 1.8vw, 10px);
-  max-width: 46ch;
+  gap: 5px;
+  margin-top: 13px;
+  padding: 0 4px;
 }
 
-.memory__line {
+.memories__cap-title {
+  font-family: var(--font-quote);
+  font-style: italic;
+  font-weight: 400;
+  font-size: clamp(0.98rem, 3vw, 1.12rem);
+  line-height: 1.4;
+  color:black;
+  text-wrap: pretty;
+}
+
+.memories__cap-line {
   font-family: var(--font-quote);
   font-style: italic;
   font-weight: 300;
-  font-size: clamp(1rem, 3.3vw, 1.2rem);
-  line-height: 1.55;
-  color: var(--text-dim);
+  font-size: clamp(0.88rem, 2.7vw, 1rem);
+  line-height: 1.5;
+  color: black;
   text-wrap: pretty;
 }
 
-.memory__line--strong {
-  color: var(--rose-100);
-  text-shadow: 0 0 26px rgba(255, 143, 171, 0.42);
-}
-
-.memory__thanks {
+.memories__shared {
+  max-width: 52ch;
   font-family: var(--font-quote);
   font-style: italic;
-  font-size: clamp(1.05rem, 3.7vw, 1.34rem);
-  color: var(--gold);
+  font-weight: 300;
+  font-size: clamp(1.02rem, 3.5vw, 1.24rem);
+  line-height: 1.55;
+  color: var(--rose-200);
   text-wrap: pretty;
 }
 
-/* tap-to-zoom overlay */
-.memory-zoom {
-  position: fixed;
-  inset: 0;
-  z-index: 40;
-  display: grid;
-  place-items: center;
-  padding: clamp(16px, 5vw, 48px);
-  background: radial-gradient(
-    120% 90% at 50% 40%,
-    rgba(150, 20, 70, 0.42),
-    rgba(8, 3, 10, 0.93) 72%
-  );
-  -webkit-backdrop-filter: blur(12px);
-  backdrop-filter: blur(12px);
-  cursor: zoom-out;
-}
-
-.memory-zoom__photo {
-  max-width: min(92vw, 540px);
-  max-height: 84vh;
-  width: auto;
-  height: auto;
-  border-radius: 20px;
-  box-shadow:
-    0 44px 96px -30px rgba(0, 0, 0, 0.92),
-    0 0 84px -10px rgba(255, 93, 143, 0.6);
-}
-
-/* Keep the whole photo card visible on short screens */
-@media (max-height: 760px) {
-  .memory__card {
-    width: min(100%, 250px);
+/* small screens: one card per row, roomy, and scrollable */
+@media (max-width: 700px) {
+  .memories__paper {
+    width: min(100%, 340px);
   }
 
-  .memory__frame-wrap {
-    padding: 12px 14px;
+  .memories__collage {
+    padding: 14px 12px;
+  }
+}
+
+/* short desktop windows: keep both cards fully visible */
+@media (max-height: 820px) and (min-width: 701px) {
+  .memories__paper {
+    width: min(100%, 272px);
   }
 }
 

@@ -5,8 +5,8 @@ import { BridgeScreen } from "./components/BridgeScreen";
 import { Celebration } from "./components/Celebration";
 import { FinaleScreen } from "./components/FinaleScreen";
 import { FloatingHearts } from "./components/FloatingHearts";
-import { GiftMemoryScreen } from "./components/GiftMemoryScreen";
 import { IntroScreen } from "./components/IntroScreen";
+import { MemoryCollageScreen } from "./components/MemoryCollageScreen";
 import { ProposalScreen } from "./components/ProposalScreen";
 import { QuestionCard } from "./components/QuestionCard";
 import { RomanticMessageScreen } from "./components/RomanticMessageScreen";
@@ -32,7 +32,7 @@ type Step =
   | { kind: "question"; index: number }
   | { kind: "message"; text: string }
   | { kind: "bridge" }
-  | { kind: "memory" }
+  | { kind: "memories" }
   | { kind: "proposal" }
   | { kind: "finale" };
 
@@ -55,7 +55,7 @@ function buildFlow(messages: string[]): Step[] {
   });
   flow.push(
     { kind: "bridge" },
-    { kind: "memory" },
+    { kind: "memories" },
     { kind: "proposal" },
     { kind: "finale" },
   );
@@ -119,7 +119,7 @@ export function App() {
     const target = flow[stepIndex];
     if (
       target.kind === "bridge" ||
-      target.kind === "memory" ||
+      target.kind === "memories" ||
       target.kind === "proposal"
     ) {
       sound.engine.whoosh();
@@ -189,10 +189,10 @@ export function App() {
           </Screen>
         );
 
-      case "memory":
+      case "memories":
         return (
-          <Screen key="memory" cinematic>
-            <GiftMemoryScreen sound={sound} onContinue={advance} />
+          <Screen key="memories" cinematic className="screen--wide">
+            <MemoryCollageScreen sound={sound} onContinue={advance} />
           </Screen>
         );
 

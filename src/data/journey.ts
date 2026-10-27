@@ -308,23 +308,30 @@ export const BRIDGE = {
 } as const;
 
 /**
- * The birthday memory: the Mi Buds 6 Play gift and the handwritten card.
- * The photo is the real one Abbos uploaded — never a placeholder.
+ * The two personal memories — holding hands and the birthday gift — shown
+ * together on ONE cinematic screen between the questions and the proposal.
+ * Both photographs are the real ones Abbos uploaded; the paths are exact and
+ * the images are never replaced, cropped or stretched.
  */
-export const MEMORY = {
-  title: "One memory I will always remember ❤️",
-  lead: "On my birthday, you gave me Mi Buds 6 Play… 🎁❤️",
-  image: "/images/gift-photo.jpg",
-  imageAlt:
-    "The Mi Buds 6 Play headphones and the handwritten card Nasiba gave Abbos",
-  lines: [
-    "I absolutely loved that gift.",
-    "But more than the gift, that it was YOU who gave it is what I'll always treasure. ❤️",
-  ],
-  thanks: "I loved it so much, thank you. 🥹❤️",
-  caption: "I'll remember this day forever.",
-  zoomHint: "Tap the photo to zoom in",
-  button: "Let's hold on to this memory too ❤️",
+export const MEMORIES = {
+  label: "TWO LITTLE MOMENTS, ONE FAVORITE PERSON ❤️",
+  title: "My favorite memories are the ones with you.",
+  shared:
+    "Thank you for these little moments, Nasiba. I hope we get to create many more memories together. ❤️",
+  button: "Keep these memories forever ❤️",
+  hands: {
+    image: "/images/holding-hands.jpg",
+    imageAlt: "Abbos and Nasiba holding hands",
+    title: "My favorite place is right here.",
+    line: "Just you, me, and your hand in mine. 🥹❤️",
+  },
+  gift: {
+    image: "/images/gift-photo.jpg",
+    imageAlt:
+      "The Mi Buds 6 Play headphones and the handwritten card Nasiba gave Abbos",
+    title: "On my birthday, you gave me Mi Buds 6 Play. 🎁❤️",
+    line: "I loved the gift, but what made it special was that it came from YOU.",
+  },
 } as const;
 
 export const PROPOSAL = {
